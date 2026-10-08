@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Trực Đội KSAN QT1</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF & html2canvas cho xuất PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-950 min-h-screen text-slate-800 font-sans p-3 sm:p-6">
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="text-center text-white space-y-2 py-2">
+            <h1 class="text-2xl sm:text-4xl font-black tracking-wider uppercase drop-shadow-lg flex items-center justify-center gap-3">
+                <i class="fa-solid fa-shield-halved text-blue-400"></i>
+                Lịch Trực Đội KSAN QT1
+            </h1>
+            <p class="text-blue-200 text-xs sm:text-sm font-medium">Hệ thống tra cứu, điều chỉnh tuần & xuất lịch trực tự động</p>
+        </div>
+
+        <!-- Single Day Selection Card (Tô nền màu vàng) -->
+        <div class="bg-amber-100/95 backdrop-blur rounded-2xl p-5 shadow-2xl border-2 border-amber-300 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <label for="shiftDate" class="text-amber-950 font-bold text-base sm:text-lg flex items-center gap-2.5">
+                <i class="fa-regular fa-calendar-days text-amber-700 text-xl"></i> Chọn ngày tra cứu:
+            </label>
+            <input type="date" id="shiftDate" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border-2 border-amber-400 focus:border-amber-600 focus:outline-none text-amber-950 font-bold shadow-inner bg-amber-50 transition-all cursor-pointer">
+        </div>
+
+        <!-- Tra cứu Kết quả Ngày đơn (Tô màu nền màu xanh lá) -->
+        <div class="bg-emerald-100/95 backdrop-blur rounded-2xl p-5 shadow-xl border-2 border-emerald-300 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="space-y-1 text-center md:text-left">
+                <span class="text-xs font-extrabold uppercase tracking-widest text-emerald-800 flex items-center justify-center md:justify-start gap-1.5">
+                    <i class="fa-solid fa-circle-info"></i> Kết quả ca trực ngày chọn
+                </span>
+                <div id="singleResult" class="text-base sm:text-xl font-bold text-emerald-950">
+                    Chưa chọn ngày...
+                </div>
+            </div>
+            <div id="shiftBadge" class="hidden px-4 py-2 rounded-full font-bold text-sm shadow-md"></div>
+        </div>
+
+        <!-- Lịch Trực Cả Tháng với Nút Trượt Tuần -->
+        <div class="bg-white/95 backdrop-blur rounded-2xl p-4 sm:p-6 shadow-2xl border border-blue-100 space-y-5">
+            <!-- Navigation Toolbar & Month Header -->
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div class="space-y-1">
+                    <h2 class="text-lg sm:text-2xl font-black text-blue-950 flex items-center gap-2.5">
+                        <i class="fa-solid fa-calendar-week text-blue-600"></i> Lịch Trực Cả Tháng
+                    </h2>
+                    <p id="monthTitle" class="text-xs sm:text-sm text-slate-500 font-bold uppercase tracking-wider"></p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <!-- Nút Điều hướng Tháng -->
+                    <button onclick="changeMonth(-1)" class="bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-2 rounded-xl border border-blue-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-chevron-left"></i> Tháng trước
+                    </button>
+                    <button onclick="resetToCurrentMonth()" class="bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-2 rounded-xl border border-blue-200 font-bold text-xs sm:text-sm transition-all">
+                        Hôm nay
+                    </button>
+                    <button onclick="changeMonth(1)" class="bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-2 rounded-xl border border-blue-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all">
+                        Tháng sau <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+
+                    <!-- Nút Xuất PDF -->
+                    <button onclick="exportToPDF()" class="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm">
+                        <i class="fa-solid fa-file-pdf text-lg text-rose-200"></i> Xuất File PDF
+                    </button>
+
+                    <!-- Nút Xuất Word -->
+                    <button onclick="exportToWord()" class="bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm">
+                        <i class="fa-solid fa-file-word text-lg text-blue-200"></i> Xuất File Word
+                    </button>
+                </div>
+            </div>
+
+            <!-- Container chứa Lịch trực -->
+            <div id="exportableSchedule" class="bg-white p-3 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <!-- Nội dung các tuần sẽ được JavaScript tự động tạo -->
+                <div id="weeksContainer" class="space-y-6"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lịch cơ sở: Chu kỳ 5 ngày xuất phát từ ngày 05/10/2026
+        const BASE_DATE = new Date(2026, 9, 5); // Tháng 10/2026 (Tháng 0-based: 9 = Tháng 10)
+        
+        // Tên ca trực, thời gian và màu sắc badge
+        const SHIFT_CYCLE = [
+            { name: 'Ca tăng cường', badge: 'bg-purple-100 text-purple-900 border-purple-400 font-bold' },
+            { name: 'Ca đêm (19h - 7h)', badge: 'bg-amber-100 text-amber-950 border-amber-400 font-bold' },
+            { name: 'Nghỉ', badge: 'bg-rose-100 text-rose-800 border-rose-400 font-bold' },
+            { name: 'Ca chiều (13h - 19h)', badge: 'bg-sky-100 text-sky-900 border-sky-400 font-bold' },
+            { name: 'Ca sáng (7h - 13h)', badge: 'bg-emerald-100 text-emerald-900 border-emerald-400 font-bold' }
+        ];
+
+        const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+        // Biến lưu trạng thái ngày đang xem của cả tháng
+        let currentViewingDate = new Date(2026, 9, 5);
+
+        // Hàm tính ca trực dựa theo số ngày chênh lệch với gốc 05/10/2026
+        function getShiftForDate(targetDate) {
+            const d1 = new Date(BASE_DATE.getFullYear(), BASE_DATE.getMonth(), BASE_DATE.getDate());
+            const d2 = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+            
+            const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+            
+            let cycleIndex = diffDays % SHIFT_CYCLE.length;
+            if (cycleIndex < 0) {
+                cycleIndex += SHIFT_CYCLE.length;
+            }
+            return SHIFT_CYCLE[cycleIndex];
+        }
+
+        // Format định dạng DD/MM/YYYY
+        function formatDate(date) {
+            const d = String(date.getDate()).padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const y = date.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+
+        // Format YYYY-MM-DD cho input date
+        function formatDateForInput(date) {
+            const d = String(date.getDate()).padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const y = date.getFullYear();
+            return `${y}-${m}-${d}`;
+        }
+
+        // Cập nhật ô hiển thị tra cứu ngày đơn
+        function updateSingleDateResult(selectedDate) {
+            const shift = getShiftForDate(selectedDate);
+            const dayOfWeek = WEEKDAYS[selectedDate.getDay()];
+            const formattedDateStr = formatDate(selectedDate);
+
+            document.getElementById('singleResult').innerHTML = `
+                <span class="text-emerald-950 font-black">${dayOfWeek} (${formattedDateStr}):</span> 
+                <span class="text-emerald-800 font-extrabold">${shift.name}</span>
+            `;
+        }
+
+        // Tạo giao diện lịch tháng chia theo các tuần
+        function renderMonthlySchedule(scrollToWeekIndex = null) {
+            const year = currentViewingDate.getFullYear();
+            const month = currentViewingDate.getMonth();
+
+            document.getElementById('monthTitle').textContent = `Tháng ${month + 1} / Năm ${year}`;
+
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            const weeksContainer = document.getElementById('weeksContainer');
+            weeksContainer.innerHTML = '';
+
+            let currentWeek = [];
+            let weekIndex = 1;
+
+            for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
+                const date = new Date(year, month, day);
+                currentWeek.push(date);
+
+                if (date.getDay() === 0 || day === lastDayOfMonth.getDate()) {
+                    renderWeekBlock(weeksContainer, currentWeek, weekIndex, year, month);
+                    currentWeek = [];
+                    weekIndex++;
+                }
+            }
+
+            if (scrollToWeekIndex !== null) {
+                setTimeout(() => {
+                    const targetBlock = document.getElementById(`week-block-${scrollToWeekIndex}`);
+                    if (targetBlock) {
+                        targetBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 50);
+            }
+        }
+
+        // Dựng HTML cho từng Block Tuần có NÚT TRƯỢT TỚI/LÙI 1 TUẦN CHÍNH XÁC
+        function renderWeekBlock(container, weekDays, weekIndex, year, month) {
+            const weekDiv = document.createElement('div');
+            weekDiv.id = `week-block-${weekIndex}`;
+            weekDiv.className = "border-2 border-blue-100 rounded-xl p-3 sm:p-4 bg-gradient-to-r from-blue-50/40 via-white to-indigo-50/40 shadow-sm relative space-y-3 week-block transition-all";
+
+            const startDateStr = formatDate(weekDays[0]);
+            const endDateStr = formatDate(weekDays[weekDays.length - 1]);
+
+            // Header của Tuần
+            const weekHeader = document.createElement('div');
+            weekHeader.className = "flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/60 pb-2.5";
+            weekHeader.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="bg-blue-600 text-white text-xs font-black px-2.5 py-1 rounded-lg uppercase tracking-wider week-title">
+                        Tuần ${weekIndex}
+                    </span>
+                    <span class="text-xs sm:text-sm font-bold text-blue-900 week-date-range">
+                        (${startDateStr} - ${endDateStr})
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-1.5 shift-btn-group">
+                    <button onclick="slideByOneWeek(${weekIndex}, -1)" title="Trượt lên tuần trước (lùi 7 ngày)" class="bg-white hover:bg-blue-600 hover:text-white text-blue-800 border border-blue-300 font-bold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all">
+                        <i class="fa-solid fa-arrow-up"></i> Trượt lên 1 tuần
+                    </button>
+                    <button onclick="slideByOneWeek(${weekIndex}, 1)" title="Trượt xuống tuần sau (tới 7 ngày)" class="bg-white hover:bg-blue-600 hover:text-white text-blue-800 border border-blue-300 font-bold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all">
+                        <i class="fa-solid fa-arrow-down"></i> Trượt xuống 1 tuần
+                    </button>
+                </div>
+            `;
+            weekDiv.appendChild(weekHeader);
+
+            // Bảng danh sách ngày trong tuần
+            const tableDiv = document.createElement('div');
+            tableDiv.className = "overflow-x-auto custom-scrollbar";
+
+            const selectedInputDate = document.getElementById('shiftDate').value;
+
+            let tableHTML = `
+                <table class="w-full text-left border-collapse text-xs sm:text-sm schedule-table">
+                    <thead>
+                        <tr class="bg-blue-100/70 text-blue-950 font-bold border-b border-blue-200">
+                            <th class="p-2.5 w-12 text-center">STT</th>
+                            <th class="p-2.5">Ngày</th>
+                            <th class="p-2.5">Thứ</th>
+                            <th class="p-2.5">Ca Trực Đội KSAN QT1</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+            `;
+
+            weekDays.forEach((date) => {
+                const shift = getShiftForDate(date);
+                const weekdayName = WEEKDAYS[date.getDay()];
+                const formattedD = formatDate(date);
+                const isSelected = formatDateForInput(date) === selectedInputDate;
+
+                tableHTML += `
+                    <tr class="hover:bg-blue-50/60 transition-colors ${isSelected ? 'bg-blue-100/90 font-bold border-l-4 border-l-blue-600' : ''}">
+                        <td class="p-2.5 text-center text-slate-400 font-mono">${date.getDate()}</td>
+                        <td class="p-2.5 font-semibold text-slate-800">${formattedD}</td>
+                        <td class="p-2.5 ${date.getDay() === 0 ? 'text-red-500 font-extrabold' : 'text-slate-700 font-medium'}">${weekdayName}</td>
+                        <td class="p-2.5">
+                            <span class="px-2.5 py-1 rounded-md border text-xs font-bold inline-block ${shift.badge}">
+                                ${shift.name}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            tableDiv.innerHTML = tableHTML;
+            weekDiv.appendChild(tableDiv);
+            container.appendChild(weekDiv);
+        }
+
+        // Trượt chính xác 1 tuần (7 ngày) lên hoặc xuống
+        function slideByOneWeek(currentWeekIndex, direction) {
+            const targetWeekIndex = currentWeekIndex + direction;
+            const targetBlock = document.getElementById(`week-block-${targetWeekIndex}`);
+
+            // Nếu tuần mục tiêu nằm trong cùng tháng đang hiển thị -> Cuộn mượt đến tuần đó
+            if (targetBlock) {
+                targetBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                // Nếu vượt ra ngoài ranh giới tháng hiện tại -> Di chuyển 7 ngày và render tháng tương ứng
+                const dateInput = document.getElementById('shiftDate');
+                let currentDate = new Date(dateInput.value || currentViewingDate);
+                currentDate.setDate(currentDate.getDate() + (direction * 7));
+
+                dateInput.value = formatDateForInput(currentDate);
+                currentViewingDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                
+                updateSingleDateResult(currentDate);
+
+                // Nếu chuyển tháng, cuộn tới tuần đầu hoặc tuần cuối của tháng mới
+                const newScrollIndex = direction > 0 ? 1 : 5;
+                renderMonthlySchedule(newScrollIndex);
+            }
+        }
+
+        // Chuyển tháng
+        function changeMonth(offset) {
+            currentViewingDate.setMonth(currentViewingDate.getMonth() + offset);
+            renderMonthlySchedule();
+        }
+
+        function resetToCurrentMonth() {
+            const today = new Date();
+            currentViewingDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('shiftDate').value = formatDateForInput(today);
+            updateSingleDateResult(today);
+            renderMonthlySchedule();
+        }
+
+        // Xuất File PDF toàn bộ lịch trực của tháng đang hiển thị
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const element = document.getElementById('exportableSchedule');
+            const monthTitleText = document.getElementById('monthTitle').textContent;
+
+            const shiftBtns = element.querySelectorAll('.shift-btn-group');
+            shiftBtns.forEach(btn => btn.style.display = 'none');
+
+            html2canvas(element, { scale: 2 }).then(canvas => {
+                shiftBtns.forEach(btn => btn.style.display = 'flex');
+
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 190;
+                const pageHeight = 295;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 28;
+
+                pdf.setFontSize(16);
+                pdf.setTextColor(30, 58, 138);
+                pdf.text("LICH TRUC DOI KSAN QT1", 105, 15, { align: "center" });
+                pdf.setFontSize(11);
+                pdf.setTextColor(100);
+                pdf.text(monthTitleText.toUpperCase(), 105, 22, { align: "center" });
+
+                pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+                heightLeft -= (pageHeight - position);
+
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                pdf.save(`Lich_Truc_KSAN_QT1_${monthTitleText.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+            }).catch(err => {
+                shiftBtns.forEach(btn => btn.style.display = 'flex');
+                console.error("Lỗi xuất PDF:", err);
+            });
+        }
+
+        // Xuất File Word trực tiếp từ toàn bộ nội dung tháng đang hiển thị
+        function exportToWord() {
+            const monthTitleText = document.getElementById('monthTitle').textContent;
+            
+            const containerClone = document.getElementById('exportableSchedule').cloneNode(true);
+            
+            const shiftBtns = containerClone.querySelectorAll('.shift-btn-group');
+            shiftBtns.forEach(btn => btn.remove());
+
+            const weekBlocks = containerClone.querySelectorAll('.week-block');
+            weekBlocks.forEach(block => {
+                block.setAttribute('style', 'margin-bottom: 20px; border: 1px solid #cbd5e1; padding: 12px; font-family: Arial, sans-serif;');
+            });
+
+            const weekTitles = containerClone.querySelectorAll('.week-title');
+            weekTitles.forEach(title => {
+                title.setAttribute('style', 'background-color: #2563eb; color: #ffffff; padding: 4px 8px; font-weight: bold; border-radius: 4px;');
+            });
+
+            const dateRanges = containerClone.querySelectorAll('.week-date-range');
+            dateRanges.forEach(range => {
+                range.setAttribute('style', 'font-weight: bold; color: #1e3a8a; margin-left: 8px;');
+            });
+
+            const tables = containerClone.querySelectorAll('table');
+            tables.forEach(table => {
+                table.setAttribute('style', 'width: 100%; border-collapse: collapse; margin-top: 10px; font-family: Arial, sans-serif; font-size: 11pt;');
+            });
+
+            const ths = containerClone.querySelectorAll('th');
+            ths.forEach(th => {
+                th.setAttribute('style', 'background-color: #dbeafe; color: #1e3a8a; border: 1px solid #93c5fd; padding: 6px; text-align: left; font-weight: bold;');
+            });
+
+            const tds = containerClone.querySelectorAll('td');
+            tds.forEach(td => {
+                td.setAttribute('style', 'border: 1px solid #e2e8f0; padding: 6px;');
+            });
+
+            const badges = containerClone.querySelectorAll('span');
+            badges.forEach(badge => {
+                const text = badge.textContent.trim();
+                if (text.includes('Ca sáng')) {
+                    badge.setAttribute('style', 'background-color: #d1fae5; color: #064e3b; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #34d399; display: inline-block;');
+                } else if (text.includes('Ca chiều')) {
+                    badge.setAttribute('style', 'background-color: #e0f2fe; color: #0c4a6e; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #38bdf8; display: inline-block;');
+                } else if (text.includes('Ca đêm')) {
+                    badge.setAttribute('style', 'background-color: #fef3c7; color: #451a03; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #fbbf24; display: inline-block;');
+                } else if (text.includes('Nghỉ')) {
+                    badge.setAttribute('style', 'background-color: #ffe4e6; color: #9f1239; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #fb7185; display: inline-block;');
+                } else if (text.includes('Ca tăng cường')) {
+                    badge.setAttribute('style', 'background-color: #f3e8ff; color: #581c87; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #c084fc; display: inline-block;');
+                }
+            });
+
+            let wordHTML = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset='utf-8'>
+                    <title>Lịch Trực Đội KSAN QT1</title>
+                    <!--[if gte mso 9]>
+                    <xml>
+                        <w:WordDocument>
+                            <w:View>Print</w:View>
+                            <w:Zoom>100</w:Zoom>
+                            <w:DoNotOptimizeForBrowser/>
+                        </w:WordDocument>
+                    </xml>
+                    <![endif]-->
+                    <style>
+                        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; color: #1e293b; }
+                        h1 { text-align: center; color: #1e3a8a; font-size: 18pt; font-weight: bold; margin-bottom: 4px; }
+                        p.subtitle { text-align: center; color: #475569; font-size: 12pt; font-weight: bold; margin-top: 0; margin-bottom: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>LỊCH TRỰC ĐỘI KSAN QT1</h1>
+                    <p class="subtitle">${monthTitleText.toUpperCase()}</p>
+                    <div>
+                        ${containerClone.innerHTML}
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff' + wordHTML], {
+                type: 'application/msword;charset=utf-8'
+            });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Lich_Truc_KSAN_QT1_${monthTitleText.replace(/[^a-zA-Z0-9]/g, '_')}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Khởi tạo ứng dụng
+        window.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('shiftDate');
+            
+            const defaultDate = new Date(2026, 9, 5);
+            dateInput.value = formatDateForInput(defaultDate);
+            currentViewingDate = new Date(defaultDate.getFullYear(), defaultDate.getMonth(), 1);
+
+            dateInput.addEventListener('change', (e) => {
+                const selected = new Date(e.target.value);
+                if (!isNaN(selected)) {
+                    currentViewingDate = new Date(selected.getFullYear(), selected.getMonth(), 1);
+                    updateSingleDateResult(selected);
+                    renderMonthlySchedule();
+                }
+            });
+
+            updateSingleDateResult(defaultDate);
+            renderMonthlySchedule();
+        });
+    </script>
+</body>
+</html>
